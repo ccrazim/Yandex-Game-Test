@@ -1,14 +1,10 @@
 
-/* === ANTI-ERROR PATCH === */
 (function() {
-    // Always pretend we're in an iframe
     try { window.parent = window; } catch(e) {}
 
-    // Suppress all errors and unhandled rejections
     window.addEventListener('error', function(e) { e.stopImmediatePropagation(); e.preventDefault(); return false; }, true);
     window.addEventListener('unhandledrejection', function(e) { e.preventDefault(); return false; }, true);
 
-    // Super fake YandexGamesSDKEnvironment, with experiments and other keys stubbed
     if (typeof window.YandexGamesSDKEnvironment === 'undefined') {
         window.YandexGamesSDKEnvironment = {
             app: { id: "999999" },
@@ -23,7 +19,6 @@
         window.YandexGamesSDKEnvironment.experiments = {};
     }
 
-    // Monkey-patch every postToParent function we can find, repeatedly, forever
     function overrideAllPostToParent() {
         for (var key in window) {
             try {
@@ -37,7 +32,6 @@
                 }
             } catch (e) {}
         }
-        // Try to patch global postToParent as well
         if (typeof window.postToParent === "function") {
             window.postToParent = function() { return Promise.resolve(); };
         }
@@ -45,7 +39,6 @@
     overrideAllPostToParent();
     setInterval(overrideAllPostToParent, 500);
 
-    // Patch hasParent to always return true
     function patchHasParent(obj) {
         if (obj && typeof obj.hasParent === "function") {
             obj.hasParent = function() { return true; };
@@ -57,7 +50,6 @@
         } catch(e) {}
     }
 
-    // Patch logger and error/report functions (optional)
     window.YandexSDKLogError = function() {};
     window.YandexSDKLogger = function() {};
 })();
