@@ -209,6 +209,18 @@ YG.features.Shortcuts = { canShowPrompt: __canShowPrompt, showPrompt: __showProm
 
 YG.shortcuts = { canShowPrompt: __canShowPrompt, showPrompt: __showPrompt };
 
+YG.features = YG.features || {};
+
+if (!YG.shortcuts) {
+  YG.shortcuts = {
+    canShowPrompt: async () => delay({ canShow: false, __mock: true }),
+    showPrompt:    async () => delay({ accepted: false, __mock: true })
+  };
+}
+
+if (!YG.shortcut) YG.shortcut = YG.shortcuts;
+if (!YG.features.Shortcuts) YG.features.Shortcuts = YG.shortcuts;
+
   window.YaGames = YG;
 
   window.sdkLoaderWasInited = true;
