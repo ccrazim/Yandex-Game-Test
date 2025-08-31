@@ -239,6 +239,34 @@ YG.i18n = YG.i18n || {
 YG.getLanguage = YG.getLanguage || (async () => ({ lang: YG.environment.i18n.lang }));
 YG.getEnvironment = YG.getEnvironment || (async () => YG.environment);
 
+  // --- Environment and Device aliases ---
+YG.environment = YG.environment || {};
+YG.environment.i18n = YG.environment.i18n || {};
+if (typeof YG.environment.i18n.lang !== "string") YG.environment.i18n.lang = "en";
+// top-level domain (mock)
+if (typeof YG.environment.i18n.tld !== "string") YG.environment.i18n.tld = "ru";
+
+YG.environment.app = YG.environment.app || { id: "mock-app-id" };
+
+YG.environment.browser = YG.environment.browser || {};
+if (typeof YG.environment.browser.lang !== "string") {
+  YG.environment.browser.lang = (navigator.language || "en").slice(0,2);
+}
+
+if (typeof YG.environment.payload !== "string") {
+  YG.environment.payload = "";
+}
+
+Object.defineProperty(YG.deviceInfo, "type", {
+  configurable: true,
+  get() {
+    if (YG.deviceInfo.isMobile()) return "mobile";
+    if (YG.deviceInfo.isTablet()) return "tablet";
+    if (YG.deviceInfo.isTV()) return "tv";
+    return "desktop";
+  }
+});
+
   window.YaGames = YG;
 
   window.sdkLoaderWasInited = true;
