@@ -498,20 +498,22 @@
       }
 
       if (alg === 'brotli' || alg === 'auto'){
-        await ensureBrotliDecoder(); // provides window.BrotliDecode
-        const buf = new Uint8Array(await f.arrayBuffer());
-        const outU8 = self.BrotliDecode(buf); // Uint8Array
-        const out = new Blob([outU8], { type: 'application/octet-stream' });
-        const outName = f.name.replace(/\.(unityweb|br)$/i,'') || (f.name + '.out');
-        const url = URL.createObjectURL(out);
-        const a = document.createElement('a');
-        a.href = url; a.download = outName; a.textContent = `${outName}  •  ${fmtBytes(out.size)}`;
-        a.className = 'btn'; a.style.display='inline-block'; a.style.marginRight='8px'; a.style.marginBottom='8px';
-        decOutEl.appendChild(a);
-        prog.done('Decompress done.');
-        decStatusEl.innerHTML = `<span class="success">Done.</span> Decompressed Brotli file.`;
-        return;
-      }
+  await ensureBrotliDecoder();                  // sets window.brotliDecompress
+  const buf = new Uint8Array(await f.arrayBuffer());
+  const outU8 = await self.brotliDecompress(buf);   // Uint8Array (sync or async depending on build)
+  const out = new Blob([outU8], { type: 'application/octet-stream' });
+  const outName = f.name.replace(/\.(unityweb|br)$/i,'') || (f.name + '.out');
+  const url = URL.createObjectURL(out);
+  const a = document.createElement('a');
+  a.href = url; a.download = outName;
+  a.textContent = `${outName}  •  ${fmtBytes(out.size)}`;
+  a.className = 'btn'; a.style.display='inline-block';
+  a.style.marginRight='8px'; a.style.marginBottom='8px';
+  decOutEl.appendChild(a);
+  prog.done('Decompress done.');
+  decStatusEl.innerHTML = `<span class="success">Done.</span> Decompressed Brotli file.`;
+  return;
+}
 
       prog.done('Done.');
       decStatusEl.textContent = 'Pick Gzip or Brotli.';
