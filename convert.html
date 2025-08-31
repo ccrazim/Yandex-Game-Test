@@ -437,26 +437,41 @@
   }
 
   // ---- Brotli loader (browser build; no require()) ----
-  let brotliReady = null;          // resolves when self.brotliDecompress is available
+  let brotliReady = null;              // resolves when window.brotliDecompress is a function
 
   async function ensureBrotliDecoder(){
-    if (self.brotliDecompress) return;
+    if (typeof self.brotliDecompress === 'function') return;
     if (brotliReady) return brotliReady;
 
-    brotliReady = (async () => {
-      const mod = await import('https://cdn.jsdelivr.net/npm/fflate@0.8.2/esm/browser.js');
+    const urls = [
+      // esm.sh ESM (most reliable)
+      'https://esm.sh/wasm-brotli@2.0.2',
+      // jsDelivr ESM dist (alt)
+      'https://cdn.jsdelivr.net/npm/wasm-brotli@2.0.2/dist/index.esm.js',
+      // unpkg ESM dist (alt)
+      'https://unpkg.com/wasm-brotli@2.0.2/dist/index.esm.js'
+    ];
 
-      if (typeof mod.brotliDecompressSync === 'function') {
-        self.brotliDecompress = (u8) => mod.brotliDecompressSync(u8);
-        return;
+    brotliReady = (async () => {
+      let mod, lastErr;
+      for (const u of urls){
+        try {
+          mod = await import(/* @vite-ignore */ u);
+          // module shapes: { decompress } or default with { decompress }
+          const fn = (mod && mod.decompress) || (mod && mod.default && mod.default.decompress);
+          if (typeof fn === 'function') {
+            self.brotliDecompress = async (u8) => {
+              const out = await fn(u8);            // returns Uint8Array
+              return out;
+            };
+            return;
+          }
+          lastErr = new Error('No decompress() export in module: ' + u);
+        } catch (e) {
+          lastErr = e;
+        }
       }
-      if (typeof mod.brotliDecompress === 'function') {
-        self.brotliDecompress = (u8) => new Promise((resolve, reject) => {
-          mod.brotliDecompress(u8, (err, out) => err ? reject(err) : resolve(out));
-        });
-        return;
-      }
-      throw new Error('fflate Brotli not available.');
+      throw (lastErr || new Error('Brotli decoder not available'));
     })();
 
     return brotliReady;
@@ -498,9 +513,12 @@
       }
 
       if (alg === 'brotli' || alg === 'auto'){
-  await ensureBrotliDecoder();                  // sets window.brotliDecompress
+  await ensureBrotliDecoder();
+  if (typeof self.brotliDecompress !== 'function') {
+    throw new Error('Brotli decoder failed to initialize.');
+  }
   const buf = new Uint8Array(await f.arrayBuffer());
-  const outU8 = await self.brotliDecompress(buf);   // Uint8Array (sync or async depending on build)
+  const outU8 = await self.brotliDecompress(buf);   // Uint8Array
   const out = new Blob([outU8], { type: 'application/octet-stream' });
   const outName = f.name.replace(/\.(unityweb|br)$/i,'') || (f.name + '.out');
   const url = URL.createObjectURL(out);
