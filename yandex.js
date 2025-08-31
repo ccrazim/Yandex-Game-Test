@@ -195,6 +195,20 @@ window.alert=()=>{};
   };
   YG.getPlayer = async () => delay(player);
 
+  const __canShowPrompt = async () => {
+  if (CFG.fails.shortcuts) return fail("Shortcuts not available");
+  return delay({ canShow: false, __mock: true });
+};
+const __showPrompt = async () => {
+  if (CFG.fails.shortcuts) return fail("Shortcuts prompt failed");
+  return delay({ accepted: false, __mock: true });
+};
+
+YG.features = YG.features || {};
+YG.features.Shortcuts = { canShowPrompt: __canShowPrompt, showPrompt: __showPrompt };
+
+YG.shortcuts = { canShowPrompt: __canShowPrompt, showPrompt: __showPrompt };
+
   window.YaGames = YG;
 
   window.sdkLoaderWasInited = true;
