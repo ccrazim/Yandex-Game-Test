@@ -437,21 +437,31 @@
   }
 
   // ---- Brotli loader (browser build; no require()) ----
-  let brotliReady = null; // resolves when window.BrotliDecode is available
-  function ensureBrotliDecoder(){
-    if (self.BrotliDecode) return Promise.resolve();
+  let brotliReady = null;          // resolves when self.brotliDecompress is available
+
+  async function ensureBrotliDecoder(){
+    if (self.brotliDecompress) return;
     if (brotliReady) return brotliReady;
 
     brotliReady = (async () => {
-      // Load the browser dictionary first, then the decoder.
-      await loadScript('https://cdn.jsdelivr.net/npm/brotli@1.3.2/dec/dictionary-browser.js');
-      await loadScript('https://cdn.jsdelivr.net/npm/brotli@1.3.2/dec/decode.js');
-      if (!self.BrotliDecode) throw new Error('Brotli decoder failed to load.');
+      const mod = await import('https://cdn.jsdelivr.net/npm/fflate@0.8.2/esm/browser.js');
+
+      if (typeof mod.brotliDecompressSync === 'function') {
+        self.brotliDecompress = (u8) => mod.brotliDecompressSync(u8);
+        return;
+      }
+      if (typeof mod.brotliDecompress === 'function') {
+        self.brotliDecompress = (u8) => new Promise((resolve, reject) => {
+          mod.brotliDecompress(u8, (err, out) => err ? reject(err) : resolve(out));
+        });
+        return;
+      }
+      throw new Error('fflate Brotli not available.');
     })();
 
     return brotliReady;
   }
-
+  
   function loadScript(src){
     return new Promise((resolve, reject)=>{
       const s = document.createElement('script');
