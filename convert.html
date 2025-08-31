@@ -90,40 +90,11 @@
       <div id="parts" class="list"></div>
     </div>
 
-    <div class="card">
-      <h2>Decompress a File (Brotli / Gzip)</h2>
-      <p class="muted">Turn a compressed game file back into its original form. (Most <span class="mono">.unityweb</span> files use Brotli.)</p>
-      <div class="row">
-        <div>
-          <label for="decFile">Choose compressed file</label>
-          <input id="decFile" type="file" />
-        </div>
-        <div>
-          <label for="decAlg">Compression type <span class="help" title="Auto guesses from the file name (.unityweb/.br = Brotli, .gz/.gzip = Gzip).">?</span></label>
-          <select id="decAlg">
-            <option value="auto" selected>Auto</option>
-            <option value="brotli">Brotli (.br / .unityweb)</option>
-            <option value="gzip">Gzip (.gz / .gzip)</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="row">
-        <button class="btn" id="decompressBtn">Decompress</button>
-        <button class="btn secondary" id="clearDecBtn">Reset</button>
-      </div>
-
-      <!-- Decompress progress -->
-      <div class="progress" aria-hidden="true"><div id="decompBar" class="bar decomp"></div></div>
-      <div id="decompNote" class="progress-note"></div>
-
-      <div id="decStatus" class="footer"></div>
-      <div class="hr"></div>
-      <h2>Output</h2>
-      <p class="muted">Click to download the decompressed file.</p>
-      <div id="decOut" class="list"></div>
-    </div>
-
+   <div class="card" id="decompCard" style="position:relative;">
+  <h2>framework decompressor</h2>
+  <p class="muted">make a framework readable js!</p>
+  <div class="broken-overlay"><span>broken :c</span></div>
+</div>
     <div class="card">
       <h2>Create GitHub Workflow</h2>
       <p class="muted">This makes a GitHub Actions script that puts the pieces back into one big file.</p>
