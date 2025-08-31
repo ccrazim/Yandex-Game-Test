@@ -146,7 +146,9 @@
 
   function fmtBytes(x){
     const u=['B','KB','MB','GB'];
-    let i=0; while(x>=1024 && i<u.length-1){x/=1024;i++} return x.toFixed( (i?1:0) )+ ' '+u[i];
+    let i=0;
+    while(x>=1024 && i<u.length-1){ x/=1024; i++; }
+    return x.toFixed(i?1:0)+' '+u[i];
   }
 
   function namePart(baseName, index, scheme, padDigits){
@@ -199,7 +201,7 @@
       partsEl.appendChild(a);
 
       offset = end; i++;
-      await new Promise(r=>setTimeout(r)); // yield to keep UI responsive
+      await new Promise(r=>setTimeout(r,0)); // yield to keep UI responsive
     }
 
     const dt = ((performance.now()-t0)/1000).toFixed(2);
@@ -209,8 +211,7 @@
     if(!partsPathEl.value) partsPathEl.value = 'core/gam-scripts/your-game/Build';
     if(!outputPathEl.value) outputPathEl.value = partsPathEl.value;
     if(!finalNameEl.value) finalNameEl.value = f.name;
-    partListEl.value = lastGeneratedParts.map(p=>p).join('
-');
+    partListEl.value = lastGeneratedParts.join('\n');
   }
 
   function clearUI(){
@@ -230,37 +231,80 @@
     const cleanup = (cleanupEl.value === 'yes');
 
     const parts = (partListEl.value || '')
-      .split(/
-?
-/)
+      .split(/\r?\n/)
       .map(s => s.trim())
       .filter(Boolean);
     if (!parts.length) { alert('Add at least one part filename (one per line).'); return; }
 
-    const partPaths = parts.map(p => (p.includes('/') || p.includes('\')) ? p : (partsPath ? partsPath + '/' + p : p));
+    const partPaths = parts.map(p => (p.includes('/') || p.includes('\\')) ? p : (partsPath ? partsPath + '/' + p : p));
     const outFile = (outputPath ? outputPath + '/' : '') + finalName;
 
-    const checks = partPaths.map(p => `-f "${p}"`).join(' && \
-                ');
-    const catList = partPaths.map(p => `"${p}"`).join(' \
-                ');
+    const checks = partPaths.map(p => `-f "${p}"`).join(' && ');
+    const catList = partPaths.map(p => `"${p}"`).join(' ');
 
     const lines = [];
-    lines.push('name: Combine Parts','','on:','  push:','    branches:',`      - ${branch}`,'','permissions:','  contents: write','','jobs:','  combine:','    runs-on: ubuntu-latest','    steps:','      - name: Checkout repository','        uses: actions/checkout@v4','        with:','          fetch-depth: 0','','      - name: Verify parts and combine','        run: |','          set -e');
+    lines.push(
+      'name: Combine Parts',
+      '',
+      'on:',
+      '  push:',
+      '    branches:',
+      `      - ${branch}`,
+      '',
+      'permissions:',
+      '  contents: write',
+      '',
+      'jobs:',
+      '  combine:',
+      '    runs-on: ubuntu-latest',
+      '    steps:',
+      '      - name: Checkout repository',
+      '        uses: actions/checkout@v4',
+      '        with:',
+      '          fetch-depth: 0',
+      '',
+      '      - name: Verify parts and combine',
+      '        run: |',
+      '          set -e'
+    );
     if (outputPath) lines.push(`          mkdir -p "${outputPath}"`);
-    lines.push('',`          if [[ ${checks} ]]; then`,'            echo "All parts found. Combining..."',`            cat ${catList} > "${outFile}"`,
-              `            echo "Combined -> ${outFile}"`,
-              `            ls -lh "${outFile}"`,'          else','            echo "ERROR: Missing one or more part files."','            exit 1','          fi');
+    lines.push(
+      '',
+      `          if [[ ${checks} ]]; then`,
+      '            echo "All parts found. Combining..."',
+      `            cat ${catList} > "${outFile}"`,
+      `            echo "Combined -> ${outFile}"`,
+      `            ls -lh "${outFile}"`,
+      '          else',
+      '            echo "ERROR: Missing one or more part files."',
+      '            exit 1',
+      '          fi'
+    );
     if (cleanup) {
-      const cleanList = partPaths.map(p => `"${p}"`).join(' \
-                ');
-      lines.push(`          rm -f ${cleanList}`,'          echo "Deleted part files."');
+      const cleanList = partPaths.map(p => `"${p}"`).join(' ');
+      lines.push(
+        `          rm -f ${cleanList}`,
+        '          echo "Deleted part files."'
+      );
     }
 
-    lines.push('','      - name: Commit and push combined file','        run: |','          set -e','          git config --global user.name "github-actions[bot]"','          git config --global user.email "github-actions[bot]@users.noreply.github.com"',`          git add "${outFile}"`,'          if git diff --cached --quiet; then','            echo "No changes to commit."','          else',`            git commit -m "Combine parts into ${finalName}"`,'            git push','          fi');
+    lines.push(
+      '',
+      '      - name: Commit and push combined file',
+      '        run: |',
+      '          set -e',
+      '          git config --global user.name "github-actions[bot]"',
+      '          git config --global user.email "github-actions[bot]@users.noreply.github.com"',
+      `          git add "${outFile}"`,
+      '          if git diff --cached --quiet; then',
+      '            echo "No changes to commit."',
+      '          else',
+      `            git commit -m "Combine parts into ${finalName}"`,
+      '            git push',
+      '          fi'
+    );
 
-    yamlOutEl.value = lines.join('
-');
+    yamlOutEl.value = lines.join('\n');
   }
 
   function downloadYaml(){
