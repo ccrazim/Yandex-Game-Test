@@ -5,9 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Split a Unity File + Make GitHub YAML</title>
   <style>
-    :root {
-      --bg: #0b1020; --card: #121832; --ink: #e8ecff; --muted:#aab3d9; --accent:#7c9cff; --ok:#2ee59d; --warn:#ffd166;
-    }
+    :root { --bg:#0b1020; --card:#121832; --ink:#e8ecff; --muted:#aab3d9; --accent:#7c9cff; --ok:#2ee59d; --warn:#ffd166; }
     html,body{height:100%;}
     body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,Segoe UI,Roboto,Arial,sans-serif;}
     .wrap{max-width:1100px;margin:32px auto;padding:0 16px;}
@@ -25,13 +23,21 @@
     .btn.secondary{background:#11183a;border-color:#313e7d;color:var(--muted)}
     .pill{display:inline-block;padding:4px 8px;border-radius:100px;background:#0e1430;border:1px solid #253069;color:#c9d2ff;font-size:12px}
     .list{display:grid;gap:8px;margin:8px 0}
-    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace}
+    .mono{font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace}
     .success{color:var(--ok)}
     .warn{color:var(--warn)}
     .muted{color:var(--muted)}
     .footer{margin-top:18px;color:#91a0df;font-size:12px}
     .hr{height:1px;background:#223066;margin:16px 0;border-radius:999px}
     code.kbd{background:#0d1330;border:1px solid #2a3878;padding:2px 6px;border-radius:6px}
+    .help{cursor:help;color:var(--accent);font-weight:normal;margin-left:4px}
+
+    /* Progress */
+    .progress{height:10px;background:#0e1430;border:1px solid #273579;border-radius:999px;overflow:hidden;margin:8px 0 2px}
+    .bar{height:100%;width:0%}
+    .bar.split{background:linear-gradient(90deg,#4257ff,#7c9cff)}
+    .bar.decomp{background:linear-gradient(90deg,#2ee59d,#7cffa7)}
+    .progress-note{font-size:12px;color:#9ab0ff}
   </style>
 </head>
 <body>
@@ -39,7 +45,7 @@
     <div class="card">
       <h1>Split a Unity File <span class="pill">works in your browser</span></h1>
       <p class="muted">
-        Pick a big Unity WebGL file (like <span class="mono">.data.unityweb</span> or <span class="mono">.wasm</span>).
+        Pick a big Unity WebGL file (like <span class="mono">.data.unityweb</span> or <span class="mono">.wasm.unityweb</span>).
         We cut it into smaller pieces so it’s easier to upload. Your file stays on your device — nothing is sent to a server.
       </p>
       <div class="row">
@@ -52,7 +58,7 @@
           <input id="size" type="number" min="1" step="1" value="24" />
         </div>
         <div>
-          <label for="scheme">How to name the pieces</label>
+          <label for="scheme">How to name the pieces <span class="help" title="Choose how each part file should be numbered or labeled.">?</span></label>
           <select id="scheme">
             <option value="dotTriplet">filename.ext.000.part</option>
             <option value="suffixFrom1">filename.ext.part1..N</option>
@@ -60,21 +66,62 @@
           </select>
         </div>
         <div>
-          <label for="pad">Digits (for 001 / 0001)</label>
+          <label for="pad">Digits (for 001 / 0001) <span class="help" title="How many zeros to pad the part numbers with.">?</span></label>
           <select id="pad">
             <option value="3" selected>3 (001..999)</option>
             <option value="4">4 (0001..9999)</option>
           </select>
         </div>
       </div>
+
       <div class="row">
         <button class="btn" id="splitBtn">Split into parts</button>
         <button class="btn secondary" id="clearBtn">Reset</button>
       </div>
+
+      <!-- Split progress -->
+      <div class="progress" aria-hidden="true"><div id="splitBar" class="bar split"></div></div>
+      <div id="splitNote" class="progress-note"></div>
+
       <div id="status" class="footer"></div>
       <div class="hr"></div>
       <h2>Parts</h2>
+      <p class="muted">Click a part below to download it.</p>
       <div id="parts" class="list"></div>
+    </div>
+
+    <div class="card">
+      <h2>Decompress a File (Brotli / Gzip)</h2>
+      <p class="muted">Turn a compressed game file back into its original form. (Most <span class="mono">.unityweb</span> files use Brotli.)</p>
+      <div class="row">
+        <div>
+          <label for="decFile">Choose compressed file</label>
+          <input id="decFile" type="file" />
+        </div>
+        <div>
+          <label for="decAlg">Compression type <span class="help" title="Auto guesses from the file name (.unityweb/.br = Brotli, .gz/.gzip = Gzip).">?</span></label>
+          <select id="decAlg">
+            <option value="auto" selected>Auto</option>
+            <option value="brotli">Brotli (.br / .unityweb)</option>
+            <option value="gzip">Gzip (.gz / .gzip)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <button class="btn" id="decompressBtn">Decompress</button>
+        <button class="btn secondary" id="clearDecBtn">Reset</button>
+      </div>
+
+      <!-- Decompress progress -->
+      <div class="progress" aria-hidden="true"><div id="decompBar" class="bar decomp"></div></div>
+      <div id="decompNote" class="progress-note"></div>
+
+      <div id="decStatus" class="footer"></div>
+      <div class="hr"></div>
+      <h2>Output</h2>
+      <p class="muted">Click to download the decompressed file.</p>
+      <div id="decOut" class="list"></div>
     </div>
 
     <div class="card">
@@ -84,10 +131,6 @@
         <div>
           <label for="partsPath">Where are the parts (folder)</label>
           <input id="partsPath" type="text" placeholder="e.g. game/Build" />
-        </div>
-        <div>
-          <label for="outputPath">Where to save the full file (folder)</label>
-          <input id="outputPath" type="text" placeholder="(optional) defaults to the parts folder" />
         </div>
         <div>
           <label for="branch">Branch</label>
@@ -100,7 +143,7 @@
           <input id="finalName" type="text" placeholder="e.g. WebGL.data.unityweb" />
         </div>
         <div>
-          <label for="cleanup">Delete the pieces after combine?</label>
+          <label for="cleanup">Delete the pieces after combine? <span class="help" title="If yes, the workflow removes all the small part files once the big file is built.">?</span></label>
           <select id="cleanup">
             <option value="yes" selected>Yes</option>
             <option value="no">No</option>
@@ -126,6 +169,8 @@
 <script>
 (function(){
   const $ = (id)=>document.getElementById(id);
+
+  // ----- Splitter -----
   const fileEl = $('file');
   const sizeEl = $('size');
   const schemeEl = $('scheme');
@@ -134,9 +179,11 @@
   const statusEl = $('status');
   const splitBtn = $('splitBtn');
   const clearBtn = $('clearBtn');
+  const splitBar = $('splitBar');
+  const splitNote = $('splitNote');
 
+  // ----- YAML form -----
   const partsPathEl = $('partsPath');
-  const outputPathEl = $('outputPath');
   const branchEl = $('branch');
   const finalNameEl = $('finalName');
   const cleanupEl = $('cleanup');
@@ -145,14 +192,50 @@
   const downloadYamlBtn = $('downloadYaml');
   const yamlOutEl = $('yamlOut');
 
+  // ----- Decompressor -----
+  const decFileEl = $('decFile');
+  const decAlgEl = $('decAlg');
+  const decBtn = $('decompressBtn');
+  const clearDecBtn = $('clearDecBtn');
+  const decStatusEl = $('decStatus');
+  const decOutEl = $('decOut');
+  const decompBar = $('decompBar');
+  const decompNote = $('decompNote');
+
   let lastGeneratedParts = [];
   let lastFinalName = '';
 
   function fmtBytes(x){
-    const u=['B','KB','MB','GB'];
-    let i=0;
+    const u=['B','KB','MB','GB']; let i=0;
     while(x>=1024 && i<u.length-1){ x/=1024; i++; }
     return x.toFixed(i?1:0)+' '+u[i];
+  }
+
+  // --- fake progress controller (0.85–1.00s finish unless task takes longer) ---
+  function runFakeProgress(barEl, noteEl, label){
+    const totalMs = 850 + Math.floor(Math.random()*150); // 850–1000ms
+    const start = performance.now();
+    let stopped = false;
+
+    barEl.style.width = '0%';
+    noteEl.textContent = `${label}…`;
+    const id = setInterval(()=>{
+      if (stopped) return;
+      const t = performance.now() - start;
+      // ease-out curve, clamp to 99% until manually finished
+      const pct = Math.min(99, Math.round(100 * (1 - Math.pow(1 - Math.min(t/totalMs,1), 2))));
+      barEl.style.width = pct + '%';
+    }, 16);
+
+    return {
+      done(msg){
+        stopped = true;
+        clearInterval(id);
+        barEl.style.width = '100%';
+        noteEl.textContent = msg || `${label} done.`;
+        setTimeout(()=>{ barEl.style.width='0%'; noteEl.textContent=''; }, 750);
+      }
+    };
   }
 
   function namePart(baseName, index, scheme, padDigits){
@@ -163,11 +246,8 @@
       const n = String(index).padStart(padDigits,'0');
       return `${stem}${ext}.${n}.part`;
     }
-    if(scheme==='suffixFrom1'){
-      return `${stem}${ext}.part${index}`;
-    }
-    // suffixFrom0
-    return `${stem}${ext}.part${index}`;
+    if(scheme==='suffixFrom1') return `${stem}${ext}.part${index}`;
+    return `${stem}${ext}.part${index}`; // suffixFrom0
   }
 
   async function splitFile(){
@@ -176,12 +256,16 @@
     const mb = Math.max(1, parseInt(sizeEl.value||'24',10));
     const partSize = mb*1024*1024;
 
-    // Determine numbering based on scheme
-    const scheme = schemeEl.value; // dotTriplet | suffixFrom1 | suffixFrom0
+    // Hard reset UI so previous runs don't leak state
+    partsEl.innerHTML = '';
+    statusEl.textContent = '';
+    partListEl.value = '';
+    yamlOutEl.value = '';
+
+    const scheme = schemeEl.value;
     const padDigits = parseInt(padEl.value,10);
     const startIndex = (scheme==='suffixFrom1') ? 1 : 0;
 
-    partsEl.innerHTML = '';
     lastGeneratedParts = [];
     lastFinalName = f.name;
 
@@ -190,6 +274,7 @@
     let i = startIndex;
 
     const t0 = performance.now();
+    const prog = runFakeProgress(splitBar, splitNote, 'Splitting');
 
     while(offset < total){
       const end = Math.min(offset + partSize, total);
@@ -210,11 +295,13 @@
 
     const dt = ((performance.now()-t0)/1000).toFixed(2);
     statusEl.innerHTML = `<span class="success">Done.</span> Split <span class="mono">${f.name}</span> into <b>${lastGeneratedParts.length}</b> piece(s) in ${dt}s.`;
+    prog.done('Split done.');
 
-    // Seed YAML form
+    // Fresh defaults each run
     if(!partsPathEl.value) partsPathEl.value = 'game/Build';
-    if(!outputPathEl.value) outputPathEl.value = partsPathEl.value;
-    if(!finalNameEl.value) finalNameEl.value = f.name;
+    if(!branchEl.value) branchEl.value = 'main';
+    finalNameEl.value = f.name; // always sync to current file
+    if(!cleanupEl.value) cleanupEl.value = 'yes';
     partListEl.value = lastGeneratedParts.join('\n');
   }
 
@@ -224,15 +311,25 @@
     partListEl.value='';
     yamlOutEl.value='';
     lastGeneratedParts=[];
+    lastFinalName='';
+    fileEl.value='';
+    splitBar.style.width='0%'; splitNote.textContent='';
   }
+
+  // keep final name in sync even before splitting
+  fileEl.addEventListener('change', ()=>{
+    const nf = fileEl.files?.[0]?.name || '';
+    if(nf){ finalNameEl.value = nf; yamlOutEl.value = ''; partsEl.innerHTML=''; statusEl.textContent=''; }
+  });
 
   function buildYaml(){
     const trimSlashes = (s)=> (s||'').replace(/^\/+|\/+$/g,'');
     const partsPath = trimSlashes(partsPathEl.value);
-    const outputPath = trimSlashes(outputPathEl.value) || partsPath;
     const branch = branchEl.value || 'main';
     const finalName = finalNameEl.value || lastFinalName || 'merged.bin';
     const cleanup = (cleanupEl.value === 'yes');
+
+    if (!partsPath){ alert('Enter the parts folder (e.g., game/Build).'); return; }
 
     const parts = (partListEl.value || '')
       .split(/\r?\n/)
@@ -241,7 +338,7 @@
     if (!parts.length) { alert('Add at least one part filename (one per line).'); return; }
 
     const partPaths = parts.map(p => (p.includes('/') || p.includes('\\')) ? p : (partsPath ? partsPath + '/' + p : p));
-    const outFile = (outputPath ? outputPath + '/' : '') + finalName;
+    const outFile = (partsPath ? partsPath + '/' : '') + finalName;
 
     const checks = partPaths.map(p => `-f "${p}"`).join(' && ');
     const catList = partPaths.map(p => `"${p}"`).join(' ');
@@ -271,7 +368,7 @@
       '        run: |',
       '          set -e'
     );
-    if (outputPath) lines.push(`          mkdir -p "${outputPath}"`);
+    if (partsPath) lines.push(`          mkdir -p "${partsPath}"`);
     lines.push(
       '',
       `          if [[ ${checks} ]]; then`,
@@ -322,10 +419,126 @@
     URL.revokeObjectURL(url);
   }
 
+  // ===== Decompression helpers =====
+  function guessAlgFromName(name){
+    const lower = (name||'').toLowerCase();
+    if (/\.(unityweb|br)$/.test(lower)) return 'brotli';
+    if (/\.(gz|gzip)$/.test(lower)) return 'gzip';
+    return null;
+  }
+
+  async function decompressGzip(blob){
+    if (typeof DecompressionStream !== 'function') throw new Error('This browser does not support Gzip decompression.');
+    const ds = new DecompressionStream('gzip');
+    const stream = blob.stream().pipeThrough(ds);
+    return await new Response(stream).blob();
+  }
+
+  // ---- Brotli loader: try WASM ESM first, then legacy browser JS fallback ----
+  let brotliReady = null; // resolves when self.brotliDecompress is set
+  function ensureBrotliDecoder(){
+    if (self.brotliDecompress) return Promise.resolve();
+    if (brotliReady) return brotliReady;
+
+    brotliReady = (async () => {
+      // 1) Try wasm-brotli ESM (browser-friendly, no require)
+      try {
+        const mod = await import('https://esm.sh/wasm-brotli@2.0.2');
+        if (mod && typeof mod.decompress === 'function') {
+          self.brotliDecompress = async (u8) => await mod.decompress(u8);
+          return;
+        }
+      } catch (_) { /* fall through */ }
+
+      // 2) Fallback to legacy pure-JS browser build (loads globals: BrotliDecode)
+      await loadScript('https://cdn.jsdelivr.net/npm/brotli@1.3.3/dec/dictionary-browser.js');
+      await loadScript('https://cdn.jsdelivr.net/npm/brotli@1.3.3/dec/decode.js');
+      if (self.BrotliDecode) {
+        self.brotliDecompress = async (u8) => self.BrotliDecode(u8);
+        return;
+      }
+      throw new Error('No Brotli decoder available.');
+    })();
+
+    return brotliReady;
+  }
+
+  function loadScript(src){
+    return new Promise((resolve, reject)=>{
+      const s = document.createElement('script');
+      s.src = src; s.async = true;
+      s.onload = resolve;
+      s.onerror = ()=>reject(new Error('Failed to load '+src));
+      document.head.appendChild(s);
+    });
+  }
+
+  async function decompressFile(){
+    const f = decFileEl?.files?.[0];
+    if(!f){ decStatusEl.textContent = 'Choose a compressed file first.'; return; }
+    let alg = decAlgEl.value;
+    if (alg === 'auto') alg = guessAlgFromName(f.name) || 'auto';
+
+    decOutEl.innerHTML = '';
+    decStatusEl.textContent = '';
+
+    const prog = runFakeProgress(decompBar, decompNote, 'Decompressing');
+
+    try{
+      if (alg === 'gzip'){
+        const out = await decompressGzip(f);
+        const outName = f.name.replace(/\.(gz|gzip)$/i,'') || (f.name + '.out');
+        const url = URL.createObjectURL(out);
+        const a = document.createElement('a');
+        a.href = url; a.download = outName; a.textContent = `${outName}  •  ${fmtBytes(out.size)}`;
+        a.className = 'btn'; a.style.display='inline-block'; a.style.marginRight='8px'; a.style.marginBottom='8px';
+        decOutEl.appendChild(a);
+        prog.done('Decompress done.');
+        decStatusEl.innerHTML = `<span class="success">Done.</span> Decompressed Gzip file.`;
+        return;
+      }
+
+      if (alg === 'brotli' || alg === 'auto'){
+        await ensureBrotliDecoder(); // sets window.brotliDecompress
+        if (!self.brotliDecompress) throw new Error('Brotli decoder not available.');
+        const buf = new Uint8Array(await f.arrayBuffer());
+        const outU8 = await self.brotliDecompress(buf); // Uint8Array
+        const out = new Blob([outU8], { type: 'application/octet-stream' });
+        const outName = f.name.replace(/\.(unityweb|br)$/i,'') || (f.name + '.out');
+        const url = URL.createObjectURL(out);
+        const a = document.createElement('a');
+        a.href = url; a.download = outName; a.textContent = `${outName}  •  ${fmtBytes(out.size)}`;
+        a.className = 'btn'; a.style.display='inline-block'; a.style.marginRight='8px'; a.style.marginBottom='8px';
+        decOutEl.appendChild(a);
+        prog.done('Decompress done.');
+        decStatusEl.innerHTML = `<span class="success">Done.</span> Decompressed Brotli file.`;
+        return;
+      }
+
+      prog.done('Done.');
+      decStatusEl.textContent = 'Pick Gzip or Brotli.';
+    }catch(err){
+      prog.done('Done.');
+      decStatusEl.innerHTML = `<span class="warn">Error:</span> ${err.message}`;
+    }
+  }
+
+  function clearDecompressUI(){
+    decOutEl.innerHTML = '';
+    decStatusEl.textContent = '';
+    decFileEl.value = '';
+    decAlgEl.value = 'auto';
+    decompBar.style.width='0%'; decompNote.textContent='';
+  }
+
+  // ----- Events -----
   splitBtn.addEventListener('click', splitFile);
   clearBtn.addEventListener('click', clearUI);
   genYamlBtn.addEventListener('click', buildYaml);
   downloadYamlBtn.addEventListener('click', downloadYaml);
+
+  decBtn.addEventListener('click', decompressFile);
+  clearDecBtn.addEventListener('click', clearDecompressUI);
 })();
 </script>
 </body>
