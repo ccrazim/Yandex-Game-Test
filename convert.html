@@ -434,30 +434,17 @@
     return await new Response(stream).blob();
   }
 
-  // ---- Brotli loader: try WASM ESM first, then legacy browser JS fallback ----
-  let brotliReady = null; // resolves when self.brotliDecompress is set
+  // ---- Brotli loader (browser build; no require()) ----
+  let brotliReady = null; // resolves when window.BrotliDecode is available
   function ensureBrotliDecoder(){
-    if (self.brotliDecompress) return Promise.resolve();
+    if (self.BrotliDecode) return Promise.resolve();
     if (brotliReady) return brotliReady;
 
     brotliReady = (async () => {
-      // 1) Try wasm-brotli ESM (browser-friendly, no require)
-      try {
-        const mod = await import('https://esm.sh/wasm-brotli@2.0.2');
-        if (mod && typeof mod.decompress === 'function') {
-          self.brotliDecompress = async (u8) => await mod.decompress(u8);
-          return;
-        }
-      } catch (_) { /* fall through */ }
-
-      // 2) Fallback to legacy pure-JS browser build (loads globals: BrotliDecode)
-      await loadScript('https://cdn.jsdelivr.net/npm/brotli@1.3.3/dec/dictionary-browser.js');
-      await loadScript('https://cdn.jsdelivr.net/npm/brotli@1.3.3/dec/decode.js');
-      if (self.BrotliDecode) {
-        self.brotliDecompress = async (u8) => self.BrotliDecode(u8);
-        return;
-      }
-      throw new Error('No Brotli decoder available.');
+      // Load the browser dictionary first, then the decoder.
+      await loadScript('https://cdn.jsdelivr.net/npm/brotli@1.3.2/dec/dictionary-browser.js');
+      await loadScript('https://cdn.jsdelivr.net/npm/brotli@1.3.2/dec/decode.js');
+      if (!self.BrotliDecode) throw new Error('Brotli decoder failed to load.');
     })();
 
     return brotliReady;
@@ -499,10 +486,9 @@
       }
 
       if (alg === 'brotli' || alg === 'auto'){
-        await ensureBrotliDecoder(); // sets window.brotliDecompress
-        if (!self.brotliDecompress) throw new Error('Brotli decoder not available.');
+        await ensureBrotliDecoder(); // provides window.BrotliDecode
         const buf = new Uint8Array(await f.arrayBuffer());
-        const outU8 = await self.brotliDecompress(buf); // Uint8Array
+        const outU8 = self.BrotliDecode(buf); // Uint8Array
         const out = new Blob([outU8], { type: 'application/octet-stream' });
         const outName = f.name.replace(/\.(unityweb|br)$/i,'') || (f.name + '.out');
         const url = URL.createObjectURL(out);
