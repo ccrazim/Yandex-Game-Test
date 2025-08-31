@@ -58,22 +58,19 @@ window.alert=()=>{};
     setLang: (l) => { YG.environment.i18n.lang = String(l || "en"); YG.environment.i18nLang = YG.environment.i18n.lang; return true; }
   };
 
-  YG.getLanguage = async () => ({ lang: YG.environment.i18n.lang });
-  YG.getEnvironment = async () => YG.environment;
+  YG.getLanguage   = async () => ({ lang: YG.environment.i18n.lang });
+  YG.getEnvironment= async () => YG.environment;
 
   const _events = {};
   YG.on  = (evt, fn) => { (_events[evt]||(_events[evt]=[])).push(fn); return true; };
   YG.off = (evt, fn) => { const a=_events[evt]; if(!a) return false; const i=a.indexOf(fn); if(i>=0) a.splice(i,1); return i>=0; };
   const _emit = (evt, p) => { const a=_events[evt]||[]; for (let i=0;i<a.length;i++) try{a[i](p);}catch(_){} };
 
-  YG.init = async (opts={}) => { YG.__initOptions = opts; _emit("init", opts); return delay(YG); };
-
   YG.auth = { openAuthDialog: async () => { if (CFG.fails.auth) return fail("Auth dialog failed"); return delay({ authorized:true, __mock:true }); } };
 
   let bannerVisible = false;
   const __canReview     = async () => { if (CFG.fails.feedback) return fail("Feedback not available"); return delay({ value:false, reason:"unsupported", __mock:true }); };
   const __requestReview = async () => { if (CFG.fails.feedback) return fail("Feedback request failed"); return delay({ feedbackSent:false, __mock:true }); };
-
   const __canShowPrompt = async () => { if (CFG.fails.shortcuts) return fail("Shortcuts not available"); return delay({ canShow:false, __mock:true }); };
   const __showPrompt    = async () => { if (CFG.fails.shortcuts) return fail("Shortcuts prompt failed"); return delay({ accepted:false, __mock:true }); };
 
@@ -190,6 +187,31 @@ window.alert=()=>{};
   };
   YG.getPlayer = async () => delay(player);
 
+  function makeAny(target) {
+    const store = (typeof target==="object" && target) || {};
+    const fn = function(){};
+    const base = typeof target==="function" ? target : fn;
+    return new Proxy(base, {
+      get(_t, prop){
+        if (prop === Symbol.toStringTag) return "Object";
+        if (prop === "then") return undefined;
+        if (store && Object.prototype.hasOwnProperty.call(store, prop)) return store[prop];
+        const nested = makeAny({});
+        store[prop] = nested;
+        return nested;
+      },
+      set(_t, prop, val){ store[prop]=val; return true; },
+      apply(_t, _this, args){ return Promise.resolve(undefined); },
+      has(_t, prop){ return true; },
+      ownKeys(){ return Reflect.ownKeys(store); },
+      getOwnPropertyDescriptor(_t, prop){ return { configurable:true, enumerable:true, writable:true, value:store[prop] }; }
+    });
+  }
+
+  const YG_ANY = makeAny(YG);
+
+  YG.init = async (opts={}) => { YG.__initOptions = opts; _emit("init", opts); return delay(YG_ANY); };
+
   window.YaGames = YG;
 
   window.sdkLoaderWasInited = true;
@@ -200,15 +222,10 @@ window.alert=()=>{};
   YGL.getStatus = () => ({ loaded:true, error:null, sdkUrl:_sdkUrl });
   YGL.setSDKUrl = (u) => { _sdkUrl = String(u||""); return _sdkUrl; };
   YGL.getSDKUrl = () => _sdkUrl;
-  YGL.load = async () => window.YaGames;
-  YGL.init = async (opts={}) => window.YaGames.init(opts);
+  YGL.load = async () => YG_ANY;
+  YGL.init = async (opts={}) => YG.init(opts);
   const _evL = {};
   YGL.on  = (evt, fn) => { (_evL[evt]||(_evL[evt]=[])).push(fn); return true; };
   YGL.off = (evt, fn) => { const a=_evL[evt]; if(!a) return false; const i=a.indexOf(fn); if(i>=0) a.splice(i,1); return i>=0; };
   window.YaGamesLoader = YGL;
-
-  if (CFG.logs) {
-    console.warn("[YaGames mock] Active (debug). No network. Version:", YG.version);
-    console.warn("[YaGamesLoader mock] Active (debug). No network. Version:", YGL.version);
-  }
 })();
