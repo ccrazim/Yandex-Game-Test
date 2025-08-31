@@ -1,0 +1,46 @@
+name: Combine Parts
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  combine:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify parts and combine
+        run: |
+          set -e
+          mkdir -p "Build"
+
+          if [[ -f "Build/Build.wasm.br.000.part" && -f "Build/Build.wasm.br.001.part" ]]; then
+            echo "All pieces found. Combining..."
+            cat "Build/Build.wasm.br.000.part" "Build/Build.wasm.br.001.part" > "Build/Build.wasm.br"
+            echo "Combined -> Build/Build.wasm.br"
+            ls -lh "Build/Build.wasm.br"
+          else
+            echo "ERROR: Missing one or more pieces."
+            exit 1
+          fi
+
+      - name: Commit and push combined file
+        run: |
+          set -e
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add "Build/Build.wasm.br"
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Combine parts into Build.wasm.br"
+            git push
+          fi
