@@ -221,6 +221,24 @@ if (!YG.shortcuts) {
 if (!YG.shortcut) YG.shortcut = YG.shortcuts;
 if (!YG.features.Shortcuts) YG.features.Shortcuts = YG.shortcuts;
 
+YG.environment = YG.environment || {};
+YG.environment.i18n = YG.environment.i18n || {};
+if (typeof YG.environment.i18n.lang !== "string") YG.environment.i18n.lang = "en";
+
+YG.environment.lang = YG.environment.i18n.lang;
+
+Object.defineProperty(YG.environment, "i18nLang", {
+  get(){ return YG.environment.i18n.lang; },
+  set(v){ YG.environment.i18n.lang = String(v || "en"); }
+});
+
+YG.i18n = YG.i18n || {
+  getLang: () => YG.environment.i18n.lang,
+  setLang: (l) => { YG.environment.i18n.lang = String(l || "en"); return true; }
+};
+YG.getLanguage = YG.getLanguage || (async () => ({ lang: YG.environment.i18n.lang }));
+YG.getEnvironment = YG.getEnvironment || (async () => YG.environment);
+
   window.YaGames = YG;
 
   window.sdkLoaderWasInited = true;
