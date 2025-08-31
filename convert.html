@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Split a Unity File + Make GitHub YAML</title>
+  <title>UWT</title>
   <style>
     :root { --bg:#0b1020; --card:#121832; --ink:#e8ecff; --muted:#aab3d9; --accent:#7c9cff; --ok:#2ee59d; --warn:#ffd166; }
     html,body{height:100%;}
@@ -103,7 +103,7 @@
       <div class="row">
         <div>
           <label for="partsPath">Where are the parts (folder)</label>
-          <input id="partsPath" type="text" placeholder="e.g. game/Build" />
+          <input id="partsPath" type="text" placeholder="e.g. /Build" />
         </div>
         <div>
           <label for="branch">Branch</label>
@@ -152,7 +152,7 @@
   function runFakeProgress(barEl,noteEl,label){const totalMs=850+Math.floor(Math.random()*150),start=performance.now();let stopped=false;barEl.style.width='0%';noteEl.textContent=`${label}…`;const id=setInterval(()=>{if(stopped)return;const t=performance.now()-start;const pct=Math.min(99,Math.round(100*(1-Math.pow(1-Math.min(t/totalMs,1),2))));barEl.style.width=pct+'%';},16);return{done(msg){stopped=true;clearInterval(id);barEl.style.width='100%';noteEl.textContent=msg||`${label} done.`;setTimeout(()=>{barEl.style.width='0%';noteEl.textContent='';},750);}};}
   function namePart(baseName,index,scheme,padDigits){const dot=baseName.lastIndexOf('.');const stem=dot>=0?baseName.slice(0,dot):baseName;const ext=dot>=0?baseName.slice(dot):'';if(scheme==='dotTriplet'){return `${stem}${ext}.${String(index).padStart(padDigits,'0')}.part`;}if(scheme==='suffixFrom1'){return `${stem}${ext}.part${index}`;}return `${stem}${ext}.part${index}`;}
 
-  async function splitFile(){const f=fileEl.files?.[0];if(!f){statusEl.textContent='Choose a file first.';return;}const partSize=Math.max(1,parseInt(sizeEl.value||'24',10))*1024*1024;partsEl.innerHTML='';statusEl.textContent='';partListEl.value='';yamlOutEl.value='';const scheme=schemeEl.value,padDigits=parseInt(padEl.value,10),startIndex=(scheme==='suffixFrom1')?1:0;lastGeneratedParts=[];lastFinalName=f.name;let offset=0,i=startIndex;const t0=performance.now();const prog=runFakeProgress(splitBar,splitNote,'Splitting');while(offset<f.size){const end=Math.min(offset+partSize,f.size);const blob=f.slice(offset,end);const partName=namePart(f.name,i,scheme,padDigits);lastGeneratedParts.push(partName);const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=partName;a.textContent=`${partName}  •  ${fmtBytes(blob.size)}`;a.className='btn';a.style.display='inline-block';a.style.marginRight='8px';a.style.marginBottom='8px';partsEl.appendChild(a);offset=end;i++;await new Promise(r=>setTimeout(r,0));}const dt=((performance.now()-t0)/1000).toFixed(2);statusEl.innerHTML=`<span class="success">Done.</span> Split <span class="mono">${f.name}</span> into <b>${lastGeneratedParts.length}</b> piece(s) in ${dt}s.`;prog.done('Split done.');if(!partsPathEl.value)partsPathEl.value='game/Build';if(!branchEl.value)branchEl.value='main';finalNameEl.value=f.name;if(!cleanupEl.value)cleanupEl.value='yes';partListEl.value=lastGeneratedParts.join('\n');}
+  async function splitFile(){const f=fileEl.files?.[0];if(!f){statusEl.textContent='Choose a file first.';return;}const partSize=Math.max(1,parseInt(sizeEl.value||'24',10))*1024*1024;partsEl.innerHTML='';statusEl.textContent='';partListEl.value='';yamlOutEl.value='';const scheme=schemeEl.value,padDigits=parseInt(padEl.value,10),startIndex=(scheme==='suffixFrom1')?1:0;lastGeneratedParts=[];lastFinalName=f.name;let offset=0,i=startIndex;const t0=performance.now();const prog=runFakeProgress(splitBar,splitNote,'Splitting');while(offset<f.size){const end=Math.min(offset+partSize,f.size);const blob=f.slice(offset,end);const partName=namePart(f.name,i,scheme,padDigits);lastGeneratedParts.push(partName);const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=partName;a.textContent=`${partName}  •  ${fmtBytes(blob.size)}`;a.className='btn';a.style.display='inline-block';a.style.marginRight='8px';a.style.marginBottom='8px';partsEl.appendChild(a);offset=end;i++;await new Promise(r=>setTimeout(r,0));}const dt=((performance.now()-t0)/1000).toFixed(2);statusEl.innerHTML=`<span class="success">Done.</span> Split <span class="mono">${f.name}</span> into <b>${lastGeneratedParts.length}</b> piece(s) in ${dt}s.`;prog.done('Split done.');if(!partsPathEl.value)partsPathEl.value='/Build';if(!branchEl.value)branchEl.value='main';finalNameEl.value=f.name;if(!cleanupEl.value)cleanupEl.value='yes';partListEl.value=lastGeneratedParts.join('\n');}
   function clearUI(){partsEl.innerHTML='';statusEl.textContent='';partListEl.value='';yamlOutEl.value='';lastGeneratedParts=[];lastFinalName='';fileEl.value='';splitBar.style.width='0%';splitNote.textContent='';}
   fileEl.addEventListener('change',()=>{const nf=fileEl.files?.[0]?.name||'';if(nf){finalNameEl.value=nf;yamlOutEl.value='';partsEl.innerHTML='';statusEl.textContent='';}});
   cleanupEl.addEventListener('change',()=>{if(yamlOutEl.value.trim())buildYaml();});
