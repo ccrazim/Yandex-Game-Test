@@ -225,78 +225,42 @@
     const trimSlashes = (s)=> (s||'').replace(/^\/+|\/+$/g,'');
     const partsPath = trimSlashes(partsPathEl.value);
     const outputPath = trimSlashes(outputPathEl.value) || partsPath;
-    const branch = branchEl.value||'main';
-    const finalName = finalNameEl.value||lastFinalName||'merged.bin';
-    const cleanup = cleanupEl.value==='yes';
+    const branch = branchEl.value || 'main';
+    const finalName = finalNameEl.value || lastFinalName || 'merged.bin';
+    const cleanup = (cleanupEl.value === 'yes');
 
-    const parts = (partListEl.value||'').split(/
+    const parts = (partListEl.value || '')
+      .split(/
 ?
-/).map(s=>s.trim()).filter(Boolean);
-    if(parts.length===0){ alert('Add at least one part filename (one per line).'); return; }
+/)
+      .map(s => s.trim())
+      .filter(Boolean);
+    if (!parts.length) { alert('Add at least one part filename (one per line).'); return; }
 
-    const mapToPath = (p)=>(/[\\/]/.test(p) ? p : (partsPath ? partsPath + '/' + p : p));
-    const partPaths = parts.map(mapToPath);
+    const partPaths = parts.map(p => (p.includes('/') || p.includes('\')) ? p : (partsPath ? partsPath + '/' + p : p));
     const outFile = (outputPath ? outputPath + '/' : '') + finalName;
 
-    const quotedParts = partPaths.map(p=>`"${p}"`).join(' \
+    const checks = partPaths.map(p => `-f "${p}"`).join(' && \
                 ');
-    const checks = partPaths.map(p=>`-f "${p}"`).join(' && \
+    const catList = partPaths.map(p => `"${p}"`).join(' \
                 ');
-    const mkOut = outputPath ? `
-          mkdir -p "${outputPath}"` : '';
-    const cleanupCmd = cleanup ? `
-          rm -f ${partPaths.map(p=>`"${p}"`).join(' \
-                ')}
-          echo "Deleted part files."` : '';
 
-    const yaml = `name: Combine Parts
+    const lines = [];
+    lines.push('name: Combine Parts','','on:','  push:','    branches:',`      - ${branch}`,'','permissions:','  contents: write','','jobs:','  combine:','    runs-on: ubuntu-latest','    steps:','      - name: Checkout repository','        uses: actions/checkout@v4','        with:','          fetch-depth: 0','','      - name: Verify parts and combine','        run: |','          set -e');
+    if (outputPath) lines.push(`          mkdir -p "${outputPath}"`);
+    lines.push('',`          if [[ ${checks} ]]; then`,'            echo "All parts found. Combining..."',`            cat ${catList} > "${outFile}"`,
+              `            echo "Combined -> ${outFile}"`,
+              `            ls -lh "${outFile}"`,'          else','            echo "ERROR: Missing one or more part files."','            exit 1','          fi');
+    if (cleanup) {
+      const cleanList = partPaths.map(p => `"${p}"`).join(' \
+                ');
+      lines.push(`          rm -f ${cleanList}`,'          echo "Deleted part files."');
+    }
 
-on:
-  push:
-    branches:
-      - ${branch}
+    lines.push('','      - name: Commit and push combined file','        run: |','          set -e','          git config --global user.name "github-actions[bot]"','          git config --global user.email "github-actions[bot]@users.noreply.github.com"',`          git add "${outFile}"`,'          if git diff --cached --quiet; then','            echo "No changes to commit."','          else',`            git commit -m "Combine parts into ${finalName}"`,'            git push','          fi');
 
-permissions:
-  contents: write
-
-jobs:
-  combine:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Verify parts and combine
-        run: |
-          set -e${mkOut}
-
-          if [[ ${checks} ]]; then
-            echo \"All parts found. Combining...\"
-            cat ${quotedParts} > \"${outFile}\"
-            echo \"Combined -> ${outFile}\"
-            ls -lh \"${outFile}\"
-          else
-            echo \"ERROR: Missing one or more part files.\"
-            exit 1
-          fi${cleanupCmd}
-
-      - name: Commit and push combined file
-        run: |
-          set -e
-          git config --global user.name \"github-actions[bot]\"
-          git config --global user.email \"github-actions[bot]@users.noreply.github.com\"
-          git add \"${outFile}\"
-          if git diff --cached --quiet; then
-            echo \"No changes to commit.\"
-          else
-            git commit -m \"Combine parts into ${finalName}\"
-            git push
-          fi
-`;
-
-    yamlOutEl.value = yaml;
+    yamlOutEl.value = lines.join('
+');
   }
 
   function downloadYaml(){
