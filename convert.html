@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Unity File Part Splitter + GitHub YAML Generator</title>
+  <title>Split a Unity File + Make GitHub YAML</title>
   <style>
     :root {
       --bg: #0b1020; --card: #121832; --ink: #e8ecff; --muted:#aab3d9; --accent:#7c9cff; --ok:#2ee59d; --warn:#ffd166;
@@ -37,36 +37,39 @@
 <body>
   <div class="wrap grid">
     <div class="card">
-      <h1>Unity File Part Splitter <span class="pill">client‑side</span></h1>
-      <p class="muted">Upload a Unity WebGL asset (<span class="mono">*.data.unityweb</span>, <span class="mono">*.wasm*</span>, <span class="mono">*.pck</span>, <span class="mono">*.br</span>, etc.). The file never leaves your browser; we slice it into parts with JavaScript and give you download links.</p>
+      <h1>Split a Unity File <span class="pill">works in your browser</span></h1>
+      <p class="muted">
+        Pick a big Unity WebGL file (like <span class="mono">.data.unityweb</span> or <span class="mono">.wasm</span>).
+        We cut it into smaller pieces so it’s easier to upload. Your file stays on your device — nothing is sent to a server.
+      </p>
       <div class="row">
         <div>
-          <label for="file">Unity / large file</label>
+          <label for="file">Choose file</label>
           <input id="file" type="file" />
         </div>
         <div>
-          <label for="size">Part size (MB)</label>
+          <label for="size">Each piece size (MB)</label>
           <input id="size" type="number" min="1" step="1" value="24" />
         </div>
         <div>
-          <label for="scheme">Naming scheme</label>
+          <label for="scheme">How to name the pieces</label>
           <select id="scheme">
-            <option value="dotTriplet">base.ext.<span class="mono">000</span>.part</option>
-            <option value="suffixFrom1">base.ext.part<span class="mono">1..N</span></option>
-            <option value="suffixFrom0">base.ext.part<span class="mono">0..N-1</span></option>
+            <option value="dotTriplet">filename.ext.000.part</option>
+            <option value="suffixFrom1">filename.ext.part1..N</option>
+            <option value="suffixFrom0">filename.ext.part0..N-1</option>
           </select>
         </div>
         <div>
-          <label for="pad">Digits (when using 000.part)</label>
+          <label for="pad">Digits (for 001 / 0001)</label>
           <select id="pad">
-            <option value="3" selected>3 (000)</option>
-            <option value="4">4 (0000)</option>
+            <option value="3" selected>3 (001..999)</option>
+            <option value="4">4 (0001..9999)</option>
           </select>
         </div>
       </div>
       <div class="row">
-        <button class="btn" id="splitBtn">Split file</button>
-        <button class="btn secondary" id="clearBtn">Clear</button>
+        <button class="btn" id="splitBtn">Split into parts</button>
+        <button class="btn secondary" id="clearBtn">Reset</button>
       </div>
       <div id="status" class="footer"></div>
       <div class="hr"></div>
@@ -75,15 +78,16 @@
     </div>
 
     <div class="card">
-      <h2>GitHub Actions YAML generator</h2>
+      <h2>Create GitHub Workflow</h2>
+      <p class="muted">This makes a GitHub Actions script that puts the pieces back into one big file.</p>
       <div class="row">
         <div>
-          <label for="partsPath">Parts folder (relative to repo root)</label>
-          <input id="partsPath" type="text" placeholder="e.g. core/gam-scripts/your-game/Build" />
+          <label for="partsPath">Where are the parts (folder)</label>
+          <input id="partsPath" type="text" placeholder="e.g. game/Build" />
         </div>
         <div>
-          <label for="outputPath">Output folder (relative to repo root)</label>
-          <input id="outputPath" type="text" placeholder="(optional) defaults to Parts folder" />
+          <label for="outputPath">Where to save the full file (folder)</label>
+          <input id="outputPath" type="text" placeholder="(optional) defaults to the parts folder" />
         </div>
         <div>
           <label for="branch">Branch</label>
@@ -92,30 +96,30 @@
       </div>
       <div class="row">
         <div>
-          <label for="finalName">Final merged filename (with extension)</label>
-          <input id="finalName" type="text" placeholder="e.g. WebGl.data.unityweb" />
+          <label for="finalName">Final file name (with extension)</label>
+          <input id="finalName" type="text" placeholder="e.g. WebGL.data.unityweb" />
         </div>
         <div>
-          <label for="cleanup">Cleanup .part files after combine?</label>
+          <label for="cleanup">Delete the pieces after combine?</label>
           <select id="cleanup">
             <option value="yes" selected>Yes</option>
             <option value="no">No</option>
           </select>
         </div>
       </div>
-      <p class="muted">We’ll infer the part filenames and count from your last split operation. You can edit below if needed.</p>
 
-      <label for="partList">Part filenames (in order, relative to Parts folder)</label>
-      <textarea id="partList" class="mono" placeholder="One per line, relative to repo folder"></textarea>
+      <p class="muted">These are the part names we just made. You can change them if needed.</p>
+      <label for="partList">Part filenames (one per line)</label>
+      <textarea id="partList" class="mono" placeholder="One per line, relative to the parts folder"></textarea>
 
       <div class="row">
-        <button class="btn" id="genYaml">Generate YAML</button>
-        <button class="btn secondary" id="downloadYaml">Download YAML</button>
+        <button class="btn" id="genYaml">Make YAML</button>
+        <button class="btn secondary" id="downloadYaml">Save YAML</button>
       </div>
 
-      <label for="yamlOut">Workflow YAML</label>
+      <label for="yamlOut">Your GitHub YAML script</label>
       <textarea id="yamlOut" class="mono" spellcheck="false"></textarea>
-      <div class="footer">YAML includes a Bash <code class="kbd">if [[ ... ]]</code> guard and a closing <code class="kbd">fi</code>, commits the merged file, and pushes to <span class="mono">main</span>.</div>
+      <div class="footer">This script checks the pieces, combines them into the final file, and pushes the result to your branch.</div>
     </div>
   </div>
 
@@ -201,14 +205,14 @@
       partsEl.appendChild(a);
 
       offset = end; i++;
-      await new Promise(r=>setTimeout(r,0)); // yield to keep UI responsive
+      await new Promise(r=>setTimeout(r,0)); // keep UI responsive
     }
 
     const dt = ((performance.now()-t0)/1000).toFixed(2);
-    statusEl.innerHTML = `<span class="success">Done.</span> Split <span class="mono">${f.name}</span> into <b>${lastGeneratedParts.length}</b> part(s) in ${dt}s.`;
+    statusEl.innerHTML = `<span class="success">Done.</span> Split <span class="mono">${f.name}</span> into <b>${lastGeneratedParts.length}</b> piece(s) in ${dt}s.`;
 
     // Seed YAML form
-    if(!partsPathEl.value) partsPathEl.value = 'core/gam-scripts/your-game/Build';
+    if(!partsPathEl.value) partsPathEl.value = 'game/Build';
     if(!outputPathEl.value) outputPathEl.value = partsPathEl.value;
     if(!finalNameEl.value) finalNameEl.value = f.name;
     partListEl.value = lastGeneratedParts.join('\n');
@@ -271,12 +275,12 @@
     lines.push(
       '',
       `          if [[ ${checks} ]]; then`,
-      '            echo "All parts found. Combining..."',
+      '            echo "All pieces found. Combining..."',
       `            cat ${catList} > "${outFile}"`,
       `            echo "Combined -> ${outFile}"`,
       `            ls -lh "${outFile}"`,
       '          else',
-      '            echo "ERROR: Missing one or more part files."',
+      '            echo "ERROR: Missing one or more pieces."',
       '            exit 1',
       '          fi'
     );
@@ -284,7 +288,7 @@
       const cleanList = partPaths.map(p => `"${p}"`).join(' ');
       lines.push(
         `          rm -f ${cleanList}`,
-        '          echo "Deleted part files."'
+        '          echo "Deleted piece files."'
       );
     }
 
@@ -309,7 +313,7 @@
 
   function downloadYaml(){
     const text = yamlOutEl.value || '';
-    if(!text){ alert('Generate YAML first.'); return; }
+    if(!text){ alert('Make the YAML first.'); return; }
     const blob = new Blob([text], {type:'text/yaml'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
