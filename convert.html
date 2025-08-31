@@ -143,7 +143,7 @@
           <input id="finalName" type="text" placeholder="e.g. WebGL.data.unityweb" />
         </div>
         <div>
-          <label for="cleanup">Delete the pieces after combine? <span class="help" title="If yes, the workflow removes all the small part files once the big file is built.">?</span></label>
+          <label for="cleanup">Delete the pieces after combine? <span class="help" title="Yes removes part files from the repository with git rm, and commits that change.">?</span></label>
           <select id="cleanup">
             <option value="yes" selected>Yes</option>
             <option value="no">No</option>
@@ -322,6 +322,11 @@
     if(nf){ finalNameEl.value = nf; yamlOutEl.value = ''; partsEl.innerHTML=''; statusEl.textContent=''; }
   });
 
+  // auto-regenerate YAML when cleanup toggle changes (if YAML exists)
+  cleanupEl.addEventListener('change', ()=>{
+    if (yamlOutEl.value.trim()) buildYaml();
+  });
+
   function buildYaml(){
     const trimSlashes = (s)=> (s||'').replace(/^\/+|\/+$/g,'');
     const partsPath = trimSlashes(partsPathEl.value);
@@ -381,13 +386,9 @@
       '            exit 1',
       '          fi'
     );
-    if (cleanup) {
-      const cleanList = partPaths.map(p => `"${p}"`).join(' ');
-      lines.push(
-        `          rm -f ${cleanList}`,
-        '          echo "Deleted piece files."'
-      );
-    }
+
+    // --- Commit step (now stages deletions when cleanup = Yes) ---
+    const cleanList = partPaths.map(p => `"${p}"`).join(' ');
 
     lines.push(
       '',
@@ -396,11 +397,12 @@
       '          set -e',
       '          git config --global user.name "github-actions[bot]"',
       '          git config --global user.email "github-actions[bot]@users.noreply.github.com"',
+      cleanup ? `          git rm -f -- ${cleanList} || true` : '          # keeping part files',
       `          git add "${outFile}"`,
       '          if git diff --cached --quiet; then',
       '            echo "No changes to commit."',
       '          else',
-      `            git commit -m "Combine parts into ${finalName}"`,
+      `            git commit -m "Combine parts into ${finalName}${cleanup ? ' and remove pieces' : ''}"`,
       '            git push',
       '          fi'
     );
