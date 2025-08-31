@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Unity File Part Splitter + GitHub YAML Generator</title>
+  <style>
+    :root {
+      --bg: #0b1020; --card: #121832; --ink: #e8ecff; --muted:#aab3d9; --accent:#7c9cff; --ok:#2ee59d; --warn:#ffd166;
+    }
+    html,body{height:100%;}
+    body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,Segoe UI,Roboto,Arial,sans-serif;}
+    .wrap{max-width:1100px;margin:32px auto;padding:0 16px;}
+    .grid{display:grid;gap:16px;}
+    .card{background:var(--card);border:1px solid #1e2750;border-radius:16px;padding:18px;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+    h1{font-size:clamp(20px,3vw,28px);margin:0 0 8px}
+    h2{font-size:18px;margin:0 0 12px}
+    label{display:block;font-weight:600;margin:10px 0 6px;color:var(--muted)}
+    input[type="number"], input[type="text"], select, textarea{width:100%;background:#0e1430;color:var(--ink);border:1px solid #233066;border-radius:10px;padding:10px 12px;outline:none}
+    textarea{min-height:180px;resize:vertical}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .row > *{flex:1 1 220px}
+    .btn{appearance:none;border:1px solid #2a3a7a;background:#1a2560;color:#fff;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer;transition:.15s}
+    .btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,0,0,.25)}
+    .btn.secondary{background:#11183a;border-color:#313e7d;color:var(--muted)}
+    .pill{display:inline-block;padding:4px 8px;border-radius:100px;background:#0e1430;border:1px solid #253069;color:#c9d2ff;font-size:12px}
+    .list{display:grid;gap:8px;margin:8px 0}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace}
+    .success{color:var(--ok)}
+    .warn{color:var(--warn)}
+    .muted{color:var(--muted)}
+    .footer{margin-top:18px;color:#91a0df;font-size:12px}
+    .hr{height:1px;background:#223066;margin:16px 0;border-radius:999px}
+    code.kbd{background:#0d1330;border:1px solid #2a3878;padding:2px 6px;border-radius:6px}
+  </style>
+</head>
+<body>
+  <div class="wrap grid">
+    <div class="card">
+      <h1>Unity File Part Splitter <span class="pill">client‑side</span></h1>
+      <p class="muted">Upload a Unity WebGL asset (<span class="mono">*.data.unityweb</span>, <span class="mono">*.wasm*</span>, <span class="mono">*.pck</span>, <span class="mono">*.br</span>, etc.). The file never leaves your browser; we slice it into parts with JavaScript and give you download links.</p>
+      <div class="row">
+        <div>
+          <label for="file">Unity / large file</label>
+          <input id="file" type="file" />
+        </div>
+        <div>
+          <label for="size">Part size (MB)</label>
+          <input id="size" type="number" min="1" step="1" value="24" />
+        </div>
+        <div>
+          <label for="scheme">Naming scheme</label>
+          <select id="scheme">
+            <option value="dotTriplet">base.ext.<span class="mono">000</span>.part</option>
+            <option value="suffixFrom1">base.ext.part<span class="mono">1..N</span></option>
+            <option value="suffixFrom0">base.ext.part<span class="mono">0..N-1</span></option>
+          </select>
+        </div>
+        <div>
+          <label for="pad">Digits (when using 000.part)</label>
+          <select id="pad">
+            <option value="3" selected>3 (000)</option>
+            <option value="4">4 (0000)</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn" id="splitBtn">Split file</button>
+        <button class="btn secondary" id="clearBtn">Clear</button>
+      </div>
+      <div id="status" class="footer"></div>
+      <div class="hr"></div>
+      <h2>Parts</h2>
+      <div id="parts" class="list"></div>
+    </div>
+
+    <div class="card">
+      <h2>GitHub Actions YAML generator</h2>
+      <div class="row">
+        <div>
+          <label for="partsPath">Parts folder (relative to repo root)</label>
+          <input id="partsPath" type="text" placeholder="e.g. core/gam-scripts/your-game/Build" />
+        </div>
+        <div>
+          <label for="outputPath">Output folder (relative to repo root)</label>
+          <input id="outputPath" type="text" placeholder="(optional) defaults to Parts folder" />
+        </div>
+        <div>
+          <label for="branch">Branch</label>
+          <input id="branch" type="text" value="main" />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="finalName">Final merged filename (with extension)</label>
+          <input id="finalName" type="text" placeholder="e.g. WebGl.data.unityweb" />
+        </div>
+        <div>
+          <label for="cleanup">Cleanup .part files after combine?</label>
+          <select id="cleanup">
+            <option value="yes" selected>Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+      </div>
+      <p class="muted">We’ll infer the part filenames and count from your last split operation. You can edit below if needed.</p>
+
+      <label for="partList">Part filenames (in order, relative to Parts folder)</label>
+      <textarea id="partList" class="mono" placeholder="One per line, relative to repo folder"></textarea>
+
+      <div class="row">
+        <button class="btn" id="genYaml">Generate YAML</button>
+        <button class="btn secondary" id="downloadYaml">Download YAML</button>
+      </div>
+
+      <label for="yamlOut">Workflow YAML</label>
+      <textarea id="yamlOut" class="mono" spellcheck="false"></textarea>
+      <div class="footer">YAML includes a Bash <code class="kbd">if [[ ... ]]</code> guard and a closing <code class="kbd">fi</code>, commits the merged file, and pushes to <span class="mono">main</span>.</div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const $ = (id)=>document.getElementById(id);
+  const fileEl = $('file');
+  const sizeEl = $('size');
+  const schemeEl = $('scheme');
+  const padEl = $('pad');
+  const partsEl = $('parts');
+  const statusEl = $('status');
+  const splitBtn = $('splitBtn');
+  const clearBtn = $('clearBtn');
+
+  const partsPathEl = $('partsPath');
+  const outputPathEl = $('outputPath');
+  const branchEl = $('branch');
+  const finalNameEl = $('finalName');
+  const cleanupEl = $('cleanup');
+  const partListEl = $('partList');
+  const genYamlBtn = $('genYaml');
+  const downloadYamlBtn = $('downloadYaml');
+  const yamlOutEl = $('yamlOut');
+
+  let lastGeneratedParts = [];
+  let lastFinalName = '';
+
+  function fmtBytes(x){
+    const u=['B','KB','MB','GB'];
+    let i=0; while(x>=1024 && i<u.length-1){x/=1024;i++} return x.toFixed( (i?1:0) )+ ' '+u[i];
+  }
+
+  function namePart(baseName, index, scheme, padDigits){
+    const dotIndex = baseName.lastIndexOf('.');
+    const stem = dotIndex>=0 ? baseName.slice(0,dotIndex) : baseName;
+    const ext  = dotIndex>=0 ? baseName.slice(dotIndex) : '';
+    if(scheme==='dotTriplet'){
+      const n = String(index).padStart(padDigits,'0');
+      return `${stem}${ext}.${n}.part`;
+    }
+    if(scheme==='suffixFrom1'){
+      return `${stem}${ext}.part${index}`;
+    }
+    // suffixFrom0
+    return `${stem}${ext}.part${index}`;
+  }
+
+  async function splitFile(){
+    const f = fileEl.files?.[0];
+    if(!f){ statusEl.textContent = 'Choose a file first.'; return; }
+    const mb = Math.max(1, parseInt(sizeEl.value||'24',10));
+    const partSize = mb*1024*1024;
+
+    // Determine numbering based on scheme
+    const scheme = schemeEl.value; // dotTriplet | suffixFrom1 | suffixFrom0
+    const padDigits = parseInt(padEl.value,10);
+    const startIndex = (scheme==='suffixFrom1') ? 1 : 0;
+
+    partsEl.innerHTML = '';
+    lastGeneratedParts = [];
+    lastFinalName = f.name;
+
+    const total = f.size;
+    let offset = 0;
+    let i = startIndex;
+
+    const t0 = performance.now();
+
+    while(offset < total){
+      const end = Math.min(offset + partSize, total);
+      const blob = f.slice(offset, end);
+
+      const partName = namePart(f.name, i, scheme, padDigits);
+      lastGeneratedParts.push(partName);
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = partName; a.textContent = `${partName}  •  ${fmtBytes(blob.size)}`;
+      a.className = 'btn'; a.style.display='inline-block'; a.style.marginRight='8px'; a.style.marginBottom='8px';
+      partsEl.appendChild(a);
+
+      offset = end; i++;
+      await new Promise(r=>setTimeout(r)); // yield to keep UI responsive
+    }
+
+    const dt = ((performance.now()-t0)/1000).toFixed(2);
+    statusEl.innerHTML = `<span class="success">Done.</span> Split <span class="mono">${f.name}</span> into <b>${lastGeneratedParts.length}</b> part(s) in ${dt}s.`;
+
+    // Seed YAML form
+    if(!partsPathEl.value) partsPathEl.value = 'core/gam-scripts/your-game/Build';
+    if(!outputPathEl.value) outputPathEl.value = partsPathEl.value;
+    if(!finalNameEl.value) finalNameEl.value = f.name;
+    partListEl.value = lastGeneratedParts.map(p=>p).join('
+');
+  }
+
+  function clearUI(){
+    partsEl.innerHTML='';
+    statusEl.textContent='';
+    partListEl.value='';
+    yamlOutEl.value='';
+    lastGeneratedParts=[];
+  }
+
+  function buildYaml(){
+    const trimSlashes = (s)=> (s||'').replace(/^\/+|\/+$/g,'');
+    const partsPath = trimSlashes(partsPathEl.value);
+    const outputPath = trimSlashes(outputPathEl.value) || partsPath;
+    const branch = branchEl.value||'main';
+    const finalName = finalNameEl.value||lastFinalName||'merged.bin';
+    const cleanup = cleanupEl.value==='yes';
+
+    const parts = (partListEl.value||'').split(/
+?
+/).map(s=>s.trim()).filter(Boolean);
+    if(parts.length===0){ alert('Add at least one part filename (one per line).'); return; }
+
+    const mapToPath = (p)=>(/[\\/]/.test(p) ? p : (partsPath ? partsPath + '/' + p : p));
+    const partPaths = parts.map(mapToPath);
+    const outFile = (outputPath ? outputPath + '/' : '') + finalName;
+
+    const quotedParts = partPaths.map(p=>`"${p}"`).join(' \
+                ');
+    const checks = partPaths.map(p=>`-f "${p}"`).join(' && \
+                ');
+    const mkOut = outputPath ? `
+          mkdir -p "${outputPath}"` : '';
+    const cleanupCmd = cleanup ? `
+          rm -f ${partPaths.map(p=>`"${p}"`).join(' \
+                ')}
+          echo "Deleted part files."` : '';
+
+    const yaml = `name: Combine Parts
+
+on:
+  push:
+    branches:
+      - ${branch}
+
+permissions:
+  contents: write
+
+jobs:
+  combine:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify parts and combine
+        run: |
+          set -e${mkOut}
+
+          if [[ ${checks} ]]; then
+            echo \"All parts found. Combining...\"
+            cat ${quotedParts} > \"${outFile}\"
+            echo \"Combined -> ${outFile}\"
+            ls -lh \"${outFile}\"
+          else
+            echo \"ERROR: Missing one or more part files.\"
+            exit 1
+          fi${cleanupCmd}
+
+      - name: Commit and push combined file
+        run: |
+          set -e
+          git config --global user.name \"github-actions[bot]\"
+          git config --global user.email \"github-actions[bot]@users.noreply.github.com\"
+          git add \"${outFile}\"
+          if git diff --cached --quiet; then
+            echo \"No changes to commit.\"
+          else
+            git commit -m \"Combine parts into ${finalName}\"
+            git push
+          fi
+`;
+
+    yamlOutEl.value = yaml;
+  }
+
+  function downloadYaml(){
+    const text = yamlOutEl.value || '';
+    if(!text){ alert('Generate YAML first.'); return; }
+    const blob = new Blob([text], {type:'text/yaml'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'combine_parts.yml';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  splitBtn.addEventListener('click', splitFile);
+  clearBtn.addEventListener('click', clearUI);
+  genYamlBtn.addEventListener('click', buildYaml);
+  downloadYamlBtn.addEventListener('click', downloadYaml);
+})();
+</script>
+</body>
+</html>
