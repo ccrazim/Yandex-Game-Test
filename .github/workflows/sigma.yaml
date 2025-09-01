@@ -1,0 +1,47 @@
+name: Combine Parts
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  combine:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify parts and combine
+        run: |
+          set -e
+          mkdir -p "stinkytest"
+ 
+          if [[ -f "stinkytest/place 132594851154788 TRUE LAP 3 EXTREMEMODE.rbxlx.000.part" && -f "stinkytest/place 132594851154788 TRUE LAP 3 EXTREMEMODE.rbxlx.001.part" && -f "stinkytest/place 132594851154788 TRUE LAP 3 EXTREMEMODE.rbxlx.002.part" && -f "stinkytest/place 132594851154788 TRUE LAP 3 EXTREMEMODE.rbxlx.003.part" && -f "stinkytest/place 132594851154788 TRUE LAP 3 EXTREMEMODE.rbxlx.004.part" && -f "stinkytest/place 132594851154788 TRUE LAP 3 EXTREMEMODE.rbxlx.005.part" ]]; then
+            echo "All pieces found. Combining..."
+            cat "stinkytest/place 132594851154788 TRUE LAP 3 EXTREMEMODE.rbxlx.000.part" "stinkytest/place 132594851154788 TRUE LAP 3 EXTREMEMODE.rbxlx.001.part" "stinkytest/place 132594851154788 TRUE LAP 3 EXTREMEMODE.rbxlx.002.part" "stinkytest/place 132594851154788 TRUE LAP 3 EXTREMEMODE.rbxlx.003.part" "stinkytest/place 132594851154788 TRUE LAP 3 EXTREMEMODE.rbxlx.004.part" "stinkytest/place 132594851154788 TRUE LAP 3 EXTREMEMODE.rbxlx.005.part" > "stinkytest/place 132594851154788 TRUE LAP 3 EXTREMEMODE.rbxlx"
+            echo "Combined -> stinkytest/place 132594851154788 TRUE LAP 3 EXTREMEMODE.rbxlx"
+            ls -lh "stinkytest/place 132594851154788 TRUE LAP 3 EXTREMEMODE.rbxlx"
+          else
+            echo "ERROR: Missing one or more pieces."
+            exit 1
+          fi
+
+      - name: Commit and push combined file
+        run: |
+          set -e
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git rm -f -- "stinkytest/place 132594851154788 TRUE LAP 3 EXTREMEMODE.rbxlx.000.part" "stinkytest/place 132594851154788 TRUE LAP 3 EXTREMEMODE.rbxlx.001.part" "stinkytest/place 132594851154788 TRUE LAP 3 EXTREMEMODE.rbxlx.002.part" "stinkytest/place 132594851154788 TRUE LAP 3 EXTREMEMODE.rbxlx.003.part" "stinkytest/place 132594851154788 TRUE LAP 3 EXTREMEMODE.rbxlx.004.part" "stinkytest/place 132594851154788 TRUE LAP 3 EXTREMEMODE.rbxlx.005.part" || true
+          git add "stinkytest/place 132594851154788 TRUE LAP 3 EXTREMEMODE.rbxlx"
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Combine parts into place 132594851154788 TRUE LAP 3 EXTREMEMODE.rbxlx and remove pieces"
+            git push
+          fi
