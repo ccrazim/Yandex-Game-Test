@@ -19,7 +19,7 @@ window.alert=()=>{};
   const MOCK_NAME = "Mock Player";
   const MOCK_PHOTO = "";
 
-  const YG = { __mock:true, version:"debug-mock-v2" };
+  const YG = { __mock:true, version:"debug-mock-v3" };
 
   Object.defineProperty(YG, "deviceInfo", {
     configurable:true,
@@ -58,8 +58,8 @@ window.alert=()=>{};
     setLang: (l) => { YG.environment.i18n.lang = String(l || "en"); YG.environment.i18nLang = YG.environment.i18n.lang; return true; }
   };
 
-  YG.getLanguage   = async () => ({ lang: YG.environment.i18n.lang });
-  YG.getEnvironment= async () => YG.environment;
+  YG.getLanguage    = async () => ({ lang: YG.environment.i18n.lang });
+  YG.getEnvironment = async () => YG.environment;
 
   const _events = {};
   YG.on  = (evt, fn) => { (_events[evt]||(_events[evt]=[])).push(fn); return true; };
@@ -171,6 +171,15 @@ window.alert=()=>{};
   };
   YG.getFlags = async () => YG.flags;
 
+  YG.features.GamesAPI = {
+    getAllGames:   async () => ({ games: [], __mock: true }),
+    getGameById:   async (id) => ({ game: null, id, __mock: true }),
+    openGame:      async (o = {}) => ({ opened: true, ...o, __mock: true }),
+    getCategories: async () => ({ categories: [], __mock: true }),
+    search:        async (q = "") => ({ games: [], query: q, __mock: true }),
+    report:        async (...a) => ({ ok:true, __mock:true, args:a })
+  };
+
   const player = {
     getUniqueID: () => MOCK_UID,
     getMode: () => "lite",
@@ -187,22 +196,32 @@ window.alert=()=>{};
   };
   YG.getPlayer = async () => delay(player);
 
-  function makeAny(target) {
-    const store = (typeof target==="object" && target) || {};
-    const fn = function(){};
-    const base = typeof target==="function" ? target : fn;
+  const __report = async (...args) => ({ ok:true, __mock:true, args });
+
+  YG.analytics = { report: __report };
+  YG.metrica   = { report: __report };
+  YG.stats     = { report: __report };
+  YG.stat      = { report: __report };
+  YG.telemetry = { report: __report };
+  if (!YG.features.report) YG.features.report = __report;
+  YG.getAnalytics = async () => ({ report: __report });
+
+  function makeAny(seed) {
+    const store = (seed && typeof seed === "object") ? seed : {};
+    const base  = function(){};
     return new Proxy(base, {
-      get(_t, prop){
+      get(_t, prop) {
         if (prop === Symbol.toStringTag) return "Object";
         if (prop === "then") return undefined;
-        if (store && Object.prototype.hasOwnProperty.call(store, prop)) return store[prop];
+        if (prop === "report") return __report;
+        if (Object.prototype.hasOwnProperty.call(store, prop)) return store[prop];
         const nested = makeAny({});
         store[prop] = nested;
         return nested;
       },
       set(_t, prop, val){ store[prop]=val; return true; },
-      apply(_t, _this, args){ return Promise.resolve(undefined); },
-      has(_t, prop){ return true; },
+      apply(){ return Promise.resolve(undefined); },
+      has(){ return true; },
       ownKeys(){ return Reflect.ownKeys(store); },
       getOwnPropertyDescriptor(_t, prop){ return { configurable:true, enumerable:true, writable:true, value:store[prop] }; }
     });
@@ -210,45 +229,7 @@ window.alert=()=>{};
 
   const YG_ANY = makeAny(YG);
 
-  YG.init = async (opts={}) => { YG.__initOptions = opts; _emit("init", opts); return delay(YG_ANY); };
-
-  function __proxifyMethods(obj){
-  return new Proxy(obj, {
-    get(t, p){
-      if (p in t) return t[p];
-      const f = async () => undefined;
-      t[p] = f;
-      return f;
-    },
-    set(t, p, v){ t[p]=v; return true; }
-  });
-}
-
-YG.features = YG.features || {};
-YG.features.GamesAPI = __proxifyMethods({
-  getAllGames:   async () => ({ games: [], __mock: true }),
-  getGameById:   async (id) => ({ game: null, id, __mock: true }),
-  openGame:      async (o = {}) => ({ opened: true, ...o, __mock: true }),
-  getCategories: async () => ({ categories: [], __mock: true }),
-  search:        async (q = "") => ({ games: [], query: q, __mock: true })
-});
-
-  const __report = async (...args) => ({ ok: true, __mock: true, args });
-
-YG.report = YG.report || __report;
-
-YG.analytics = YG.analytics || {};
-if (!YG.analytics.report) YG.analytics.report = __report;
-
-YG.metrica = YG.metrica || {};
-if (!YG.metrica.report) YG.metrica.report = __report;
-
-YG.features = YG.features || {};
-if (!YG.features.report) YG.features.report = __report;
-
-YG.features.GamesAPI = YG.features.GamesAPI || {};
-if (!YG.features.GamesAPI.getAllGames) YG.features.GamesAPI.getAllGames = async () => ({ games: [], __mock: true });
-if (!YG.features.GamesAPI.report) YG.features.GamesAPI.report = __report;
+  YG.init = async (opts={}) => { YG.__initOptions = opts; _emit("init", opts); if (!window.ysdk) window.ysdk = YG_ANY; return YG_ANY; };
 
   window.YaGames = YG;
 
@@ -266,4 +247,9 @@ if (!YG.features.GamesAPI.report) YG.features.GamesAPI.report = __report;
   YGL.on  = (evt, fn) => { (_evL[evt]||(_evL[evt]=[])).push(fn); return true; };
   YGL.off = (evt, fn) => { const a=_evL[evt]; if(!a) return false; const i=a.indexOf(fn); if(i>=0) a.splice(i,1); return i>=0; };
   window.YaGamesLoader = YGL;
+
+  if (CFG.logs) {
+    console.warn("[YaGames mock] Active (debug). No network. Version:", YG.version);
+    console.warn("[YaGamesLoader mock] Active (debug). No network. Version:", YGL.version);
+  }
 })();
