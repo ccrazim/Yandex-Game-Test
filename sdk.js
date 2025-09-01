@@ -233,6 +233,23 @@ YG.features.GamesAPI = __proxifyMethods({
   search:        async (q = "") => ({ games: [], query: q, __mock: true })
 });
 
+  const __report = async (...args) => ({ ok: true, __mock: true, args });
+
+YG.report = YG.report || __report;
+
+YG.analytics = YG.analytics || {};
+if (!YG.analytics.report) YG.analytics.report = __report;
+
+YG.metrica = YG.metrica || {};
+if (!YG.metrica.report) YG.metrica.report = __report;
+
+YG.features = YG.features || {};
+if (!YG.features.report) YG.features.report = __report;
+
+YG.features.GamesAPI = YG.features.GamesAPI || {};
+if (!YG.features.GamesAPI.getAllGames) YG.features.GamesAPI.getAllGames = async () => ({ games: [], __mock: true });
+if (!YG.features.GamesAPI.report) YG.features.GamesAPI.report = __report;
+
   window.YaGames = YG;
 
   window.sdkLoaderWasInited = true;
