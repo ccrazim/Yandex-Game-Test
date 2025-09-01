@@ -1,0 +1,17 @@
+confetti.png
+size:71,101
+filter:Linear,Linear
+pma:true
+confettiB
+bounds:41,58,28,41
+offsets:0,0,30,41
+confettiC
+bounds:2,2,32,27
+confettiD
+bounds:2,31,30,34
+rotate:90
+confettiE
+bounds:38,12,20,44
+star
+bounds:2,63,37,36
+offsets:2,1,40,38
