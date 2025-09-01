@@ -247,4 +247,15 @@ window.alert=()=>{};
   YGL.on  = (evt, fn) => { (_evL[evt]||(_evL[evt]=[])).push(fn); return true; };
   YGL.off = (evt, fn) => { const a=_evL[evt]; if(!a) return false; const i=a.indexOf(fn); if(i>=0) a.splice(i,1); return i>=0; };
   window.YaGamesLoader = YGL;
+
+  console.log(
+  "%c██%c██%c Yandex SDK modified by Crazim :3 %c██%c██%c",
+  "background: #3A972C; font-size: 18px; color: #3A972C",
+  "background: #44843A; font-size: 18px; color: #44843A",
+  "color: #fff; background: #517C4A; font-size: 18px",
+  "background: #3DAA2C; font-size: 18px; color: #3DAA2C",
+  "background: #41EB28; font-size: 18px; color: #41EB28",
+  "background: #ffffff; font-size: 18px"
+);
+  console.warn("If the game didn't load at all, it is likely that a function didn't get defined.");
 })();
