@@ -212,6 +212,27 @@ window.alert=()=>{};
 
   YG.init = async (opts={}) => { YG.__initOptions = opts; _emit("init", opts); return delay(YG_ANY); };
 
+  function __proxifyMethods(obj){
+  return new Proxy(obj, {
+    get(t, p){
+      if (p in t) return t[p];
+      const f = async () => undefined;
+      t[p] = f;
+      return f;
+    },
+    set(t, p, v){ t[p]=v; return true; }
+  });
+}
+
+YG.features = YG.features || {};
+YG.features.GamesAPI = __proxifyMethods({
+  getAllGames:   async () => ({ games: [], __mock: true }),
+  getGameById:   async (id) => ({ game: null, id, __mock: true }),
+  openGame:      async (o = {}) => ({ opened: true, ...o, __mock: true }),
+  getCategories: async () => ({ categories: [], __mock: true }),
+  search:        async (q = "") => ({ games: [], query: q, __mock: true })
+});
+
   window.YaGames = YG;
 
   window.sdkLoaderWasInited = true;
