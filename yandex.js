@@ -247,9 +247,4 @@ window.alert=()=>{};
   YGL.on  = (evt, fn) => { (_evL[evt]||(_evL[evt]=[])).push(fn); return true; };
   YGL.off = (evt, fn) => { const a=_evL[evt]; if(!a) return false; const i=a.indexOf(fn); if(i>=0) a.splice(i,1); return i>=0; };
   window.YaGamesLoader = YGL;
-
-  if (CFG.logs) {
-    console.warn("[YaGames mock] Active (debug). No network. Version:", YG.version);
-    console.warn("[YaGamesLoader mock] Active (debug). No network. Version:", YGL.version);
-  }
 })();
